@@ -15,16 +15,6 @@ import {
   Utensils,
   Fuel,
   ShoppingBag,
-  ShoppingCart,
-  Car,
-  ReceiptText,
-  Clapperboard,
-  HeartPulse,
-  GraduationCap,
-  Plane,
-  Repeat2,
-  Package,
-  Home,
   MoreHorizontal,
   LogOut,
   Lock,
@@ -37,31 +27,15 @@ import {
   Filter,
   CalendarDays,
   Menu,
-  ChevronLeft,
-  ChevronRight,
-  CalendarRange,
-  Lightbulb,
-  Target,
-  PiggyBank,
-  TrendingUp,
-  CircleDollarSign,
-  Sun,
-  Moon,
-  FileDown,
 } from "lucide-react";
 
 import {
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
 } from "recharts";
 
 import "./App.css";
@@ -141,22 +115,15 @@ const fallbackTransactions = [
 ========================================================= */
 
 const getCategoryIcon = (category) => {
-  const iconMap = {
-    "Food & Dining": Utensils,
-    Groceries: ShoppingCart,
-    Fuel: Fuel,
-    Transportation: Car,
-    Shopping: ShoppingBag,
-    "Bills & Utilities": ReceiptText,
-    Entertainment: Clapperboard,
-    Healthcare: HeartPulse,
-    Education: GraduationCap,
-    Travel: Plane,
-    Subscriptions: Repeat2,
-    Other: Package,
-  };
+  if (category === "Food & Dining") {
+    return Utensils;
+  }
 
-  return iconMap[category] || Package;
+  if (category === "Fuel") {
+    return Fuel;
+  }
+
+  return ShoppingBag;
 };
 
 const getCategoryClass = (category) => {
@@ -305,26 +272,6 @@ const formatDateForInput = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-const monthKey = (date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-
-const monthLabel = (date) =>
-  date.toLocaleDateString("en-IN", {
-    month: "long",
-    year: "numeric",
-  });
-
-const shortMonthLabel = (date) =>
-  date.toLocaleDateString("en-IN", {
-    month: "short",
-    year: "numeric",
-  });
-
-const getMonthFromKey = (key) => {
-  const [year, month] = key.split("-").map(Number);
-  return new Date(year, month - 1, 1);
-};
-
 
 /* =========================================================
    APP
@@ -384,24 +331,7 @@ function App() {
     useState("");
 
   const [chartPeriod, setChartPeriod] =
-    useState("This month");
-
-  const [selectedMonthKey, setSelectedMonthKey] =
-    useState(monthKey(new Date()));
-
-  const [savingsGoal, setSavingsGoal] = useState(() => {
-    const saved = localStorage.getItem("spendvault_savings_goal");
-    return saved ? Number(saved) || 0 : 0;
-  });
-
-  const [savingsGoalInput, setSavingsGoalInput] = useState("");
-
-  const [monthlyIncome, setMonthlyIncome] = useState(() => {
-    const saved = localStorage.getItem("spendvault_monthly_income");
-    return saved ? Number(saved) || 0 : 0;
-  });
-
-  const [monthlyIncomeInput, setMonthlyIncomeInput] = useState("");
+    useState("This week");
 
   const [openTransactionMenu, setOpenTransactionMenu] =
     useState(null);
@@ -414,60 +344,11 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] =
     useState(false);
 
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem("spendvault_theme") || "dark";
-  });
-
-  useEffect(() => {
-    localStorage.setItem("spendvault_theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((current) => current === "dark" ? "light" : "dark");
-  };
-
-  const exportToPdf = () => {
-    window.print();
-  };
-
   const handleNavigation = (page) => {
     setActivePage(page);
     setMobileMenuOpen(false);
     setOpenTransactionMenu(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    localStorage.setItem("spendvault_savings_goal", String(savingsGoal || 0));
-  }, [savingsGoal]);
-
-  useEffect(() => {
-    localStorage.setItem("spendvault_monthly_income", String(monthlyIncome || 0));
-  }, [monthlyIncome]);
-
-  const saveMonthlyIncome = () => {
-    const value = Number(monthlyIncomeInput);
-    if (!Number.isFinite(value) || value < 0) return;
-    setMonthlyIncome(value);
-    setMonthlyIncomeInput("");
-  };
-
-  const selectedMonthDate = useMemo(
-    () => getMonthFromKey(selectedMonthKey),
-    [selectedMonthKey]
-  );
-
-  const shiftSelectedMonth = (offset) => {
-    const next = new Date(selectedMonthDate);
-    next.setMonth(next.getMonth() + offset);
-    setSelectedMonthKey(monthKey(next));
-  };
-
-  const saveSavingsGoal = () => {
-    const value = Number(savingsGoalInput);
-    if (!Number.isFinite(value) || value < 0) return;
-    setSavingsGoal(value);
-    setSavingsGoalInput("");
   };
 
 
@@ -796,157 +677,87 @@ function App() {
 
 
   /* =========================================================
-     SELECTED MONTH SPENDING
+     THIS MONTH SPENDING
   ========================================================= */
 
   const thisMonthExpenses = useMemo(() => {
-    const start = startOfMonth(selectedMonthDate);
-    const end = endOfMonth(selectedMonthDate);
+    const now = new Date();
 
-    return expenses.filter((expense) => {
-      const date = new Date(expense.date);
-      return !Number.isNaN(date.getTime()) && date >= start && date <= end;
-    });
-  }, [expenses, selectedMonthDate]);
+    const start =
+      startOfMonth(now);
 
-  /* =========================================================
-     SELECTED MONTH TOTAL
-  ========================================================= */
+    const end =
+      endOfMonth(now);
+
+    return expenses.filter(
+      (expense) => {
+        const date =
+          new Date(expense.date);
+
+        return (
+          !Number.isNaN(
+            date.getTime()
+          ) &&
+          date >= start &&
+          date <= end
+        );
+      }
+    );
+  }, [expenses]);
+
 
   const thisMonthSpent = useMemo(() => {
     return thisMonthExpenses.reduce(
-      (total, expense) => total + Number(expense.amount || 0),
+      (total, expense) =>
+        total +
+        Number(expense.amount || 0),
       0
     );
   }, [thisMonthExpenses]);
 
+
   /* =========================================================
-     SELECTED MONTH METRICS
+     AVERAGE EXPENSE
   ========================================================= */
 
   const averageExpense = useMemo(() => {
-    if (thisMonthExpenses.length === 0) return 0;
-    return thisMonthSpent / thisMonthExpenses.length;
-  }, [thisMonthExpenses, thisMonthSpent]);
-
-  const previousMonthDate = useMemo(() => {
-    const date = new Date(selectedMonthDate);
-    date.setMonth(date.getMonth() - 1);
-    return date;
-  }, [selectedMonthDate]);
-
-  const previousMonthExpenses = useMemo(() => {
-    const start = startOfMonth(previousMonthDate);
-    const end = endOfMonth(previousMonthDate);
-
-    return expenses.filter((expense) => {
-      const date = new Date(expense.date);
-      return !Number.isNaN(date.getTime()) && date >= start && date <= end;
-    });
-  }, [expenses, previousMonthDate]);
-
-  const previousMonthSpent = useMemo(
-    () =>
-      previousMonthExpenses.reduce(
-        (total, expense) => total + Number(expense.amount || 0),
-        0
-      ),
-    [previousMonthExpenses]
-  );
-
-  const monthChangePercentage = useMemo(() => {
-    if (previousMonthSpent === 0) {
-      return thisMonthSpent > 0 ? 100 : 0;
+    if (expenses.length === 0) {
+      return 0;
     }
 
     return (
-      ((thisMonthSpent - previousMonthSpent) /
-        previousMonthSpent) *
-      100
+      totalSpent /
+      expenses.length
     );
-  }, [thisMonthSpent, previousMonthSpent]);
+  }, [
+    expenses,
+    totalSpent,
+  ]);
 
-  const dailyAverage = useMemo(() => {
-    const today = new Date();
-    const isCurrentMonth =
-      monthKey(selectedMonthDate) === monthKey(today);
-
-    const daysElapsed = isCurrentMonth
-      ? Math.max(today.getDate(), 1)
-      : new Date(
-          selectedMonthDate.getFullYear(),
-          selectedMonthDate.getMonth() + 1,
-          0
-        ).getDate();
-
-    return thisMonthSpent / daysElapsed;
-  }, [selectedMonthDate, thisMonthSpent]);
-
-  const monthlyTrendData = useMemo(() => {
-    return Array.from({ length: 6 }, (_, index) => {
-      const date = new Date(selectedMonthDate);
-      date.setMonth(date.getMonth() - (5 - index));
-
-      const start = startOfMonth(date);
-      const end = endOfMonth(date);
-
-      const amount = expenses.reduce((total, expense) => {
-        const expenseDate = new Date(expense.date);
-
-        return !Number.isNaN(expenseDate.getTime()) &&
-          expenseDate >= start &&
-          expenseDate <= end
-          ? total + Number(expense.amount || 0)
-          : total;
-      }, 0);
-
-      return {
-        month: shortMonthLabel(date),
-        amount,
-      };
-    });
-  }, [expenses, selectedMonthDate]);
 
   /* =========================================================
-     MONTHLY BUDGET
+     BUDGET
   ========================================================= */
 
-  const budgetRemaining = MONTHLY_BUDGET - thisMonthSpent;
+  const budgetRemaining =
+    Math.max(
+      MONTHLY_BUDGET -
+        thisMonthSpent,
+      0
+    );
 
   const budgetUsedPercentage =
     MONTHLY_BUDGET > 0
-      ? (thisMonthSpent / MONTHLY_BUDGET) * 100
-      : 0;
-
-  const monthlySavings = monthlyIncome - thisMonthSpent;
-
-  const savingsRate =
-    monthlyIncome > 0
-      ? (monthlySavings / monthlyIncome) * 100
-      : 0;
-
-  const savingsProgress =
-    savingsGoal > 0
       ? Math.min(
-          Math.max(
-            (Math.max(monthlySavings, 0) / savingsGoal) * 100,
-            0
-          ),
+          (
+            thisMonthSpent /
+              MONTHLY_BUDGET
+          ) *
+            100,
           100
         )
       : 0;
 
-  const incomeComparisonData = useMemo(
-    () => [
-      {
-        label: shortMonthLabel(selectedMonthDate),
-        income: monthlyIncome,
-        spending: thisMonthSpent,
-        savings: Math.max(monthlySavings, 0),
-      },
-    ],
-    [monthlyIncome, thisMonthSpent, monthlySavings, selectedMonthDate]
-  );
 
   /* =========================================================
      CATEGORY BREAKDOWN
@@ -1006,115 +817,198 @@ function App() {
 
 
   /* =========================================================
-     SELECTED MONTH DAILY CHART + SMART INSIGHTS
+     CHART DATA
   ========================================================= */
 
   const realChartData = useMemo(() => {
-    const end = endOfMonth(selectedMonthDate);
-    const daysInMonth = end.getDate();
-    const grouped = {};
+    if (expenses.length === 0) {
+      return fallbackChartData;
+    }
 
-    thisMonthExpenses.forEach((expense) => {
-      const date = new Date(expense.date);
-      const day = date.getDate();
+    const now = new Date();
 
-      grouped[day] =
-        (grouped[day] || 0) +
-        Number(expense.amount || 0);
-    });
+    let startDate;
+    let endDate;
 
-    return Array.from({ length: daysInMonth }, (_, index) => ({
-      day: String(index + 1),
-      amount: grouped[index + 1] || 0,
-    }));
-  }, [thisMonthExpenses, selectedMonthDate]);
+    if (
+      chartPeriod ===
+      "This week"
+    ) {
+      startDate =
+        startOfWeek(now);
 
-  const smartInsights = useMemo(() => {
-    const insights = [];
-    const topCategory = categoryData[0];
+      endDate =
+        endOfWeek(now);
+    } else if (
+      chartPeriod ===
+      "This month"
+    ) {
+      startDate =
+        startOfMonth(now);
 
-    if (monthlyIncome > 0) {
-      if (monthlySavings >= 0) {
-        insights.push({
-          type: "positive",
-          icon: PiggyBank,
-          title: "Great progress!",
-          text: `You saved ₹${monthlySavings.toLocaleString("en-IN", {
-            maximumFractionDigits: 0,
-          })} this month — ${Math.max(savingsRate, 0).toFixed(0)}% of your income.`,
-        });
-      } else {
-        insights.push({
-          type: "warning",
-          icon: ArrowUpRight,
-          title: "Spending is above income",
-          text: `You are ₹${Math.abs(monthlySavings).toLocaleString("en-IN", {
-            maximumFractionDigits: 0,
-          })} over your monthly income.`,
-        });
-      }
+      endDate =
+        endOfMonth(now);
     } else {
-      insights.push({
-        type: "trend",
-        icon: Wallet,
-        title: "Set your monthly income",
-        text: "Add it from Settings to unlock savings and income insights.",
-      });
+      startDate =
+        new Date(
+          now.getFullYear(),
+          now.getMonth() - 1,
+          1
+        );
+
+      endDate =
+        new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          0,
+          23,
+          59,
+          59,
+          999
+        );
     }
 
-    if (topCategory) {
-      insights.push({
-        type: "category",
-        icon: getCategoryIcon(topCategory.category),
-        title: `${topCategory.category} is your biggest category`,
-        text: `₹${topCategory.amount.toLocaleString("en-IN", {
-          maximumFractionDigits: 0,
-        })} • ${topCategory.percentage}% of ${monthLabel(selectedMonthDate)}`,
-      });
+    const filteredChartExpenses =
+      expenses.filter(
+        (expense) => {
+          const date =
+            new Date(
+              expense.date
+            );
+
+          return (
+            !Number.isNaN(
+              date.getTime()
+            ) &&
+            date >= startDate &&
+            date <= endDate
+          );
+        }
+      );
+
+    if (
+      chartPeriod ===
+      "This week"
+    ) {
+      const grouped = {
+        Mon: 0,
+        Tue: 0,
+        Wed: 0,
+        Thu: 0,
+        Fri: 0,
+        Sat: 0,
+        Sun: 0,
+      };
+
+      const days = [
+        "Sun",
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat",
+      ];
+
+      filteredChartExpenses.forEach(
+        (expense) => {
+          const date =
+            new Date(
+              expense.date
+            );
+
+          const day =
+            days[date.getDay()];
+
+          grouped[day] +=
+            Number(
+              expense.amount || 0
+            );
+        }
+      );
+
+      return [
+        {
+          day: "Mon",
+          amount: grouped.Mon,
+        },
+        {
+          day: "Tue",
+          amount: grouped.Tue,
+        },
+        {
+          day: "Wed",
+          amount: grouped.Wed,
+        },
+        {
+          day: "Thu",
+          amount: grouped.Thu,
+        },
+        {
+          day: "Fri",
+          amount: grouped.Fri,
+        },
+        {
+          day: "Sat",
+          amount: grouped.Sat,
+        },
+        {
+          day: "Sun",
+          amount: grouped.Sun,
+        },
+      ];
     }
 
-    if (previousMonthSpent > 0) {
-      const direction =
-        monthChangePercentage > 0
-          ? "higher"
-          : monthChangePercentage < 0
-          ? "lower"
-          : "the same";
+    const groupedByDay = {};
 
-      insights.push({
-        type: "trend",
-        icon: TrendingUp,
-        title: `Spending is ${direction} than last month`,
-        text: `${Math.abs(monthChangePercentage).toFixed(
-          0
-        )}% change compared with ${shortMonthLabel(previousMonthDate)}.`,
-      });
-    }
+    filteredChartExpenses.forEach(
+      (expense) => {
+        const date =
+          new Date(
+            expense.date
+          );
 
-    if (thisMonthSpent > MONTHLY_BUDGET) {
-      insights.push({
-        type: "warning",
-        icon: ArrowUpRight,
-        title: "Budget exceeded",
-        text: `₹${Math.abs(budgetRemaining).toLocaleString("en-IN", {
-          maximumFractionDigits: 0,
-        })} over your monthly budget.`,
-      });
-    }
+        const key =
+          date.getDate();
 
-    return insights.slice(0, 4);
+        if (
+          !groupedByDay[key]
+        ) {
+          groupedByDay[key] = 0;
+        }
+
+        groupedByDay[key] +=
+          Number(
+            expense.amount || 0
+          );
+      }
+    );
+
+    const daysInMonth =
+      endDate.getDate();
+
+    return Array.from(
+      {
+        length:
+          daysInMonth,
+      },
+      (_, index) => {
+        const day =
+          index + 1;
+
+        return {
+          day: String(day),
+          amount:
+            groupedByDay[day] ||
+            0,
+        };
+      }
+    );
   }, [
-    categoryData,
-    monthlyIncome,
-    monthlySavings,
-    savingsRate,
-    thisMonthSpent,
-    selectedMonthDate,
-    previousMonthSpent,
-    monthChangePercentage,
-    previousMonthDate,
-    budgetRemaining,
+    expenses,
+    chartPeriod,
   ]);
+
 
   /* =========================================================
      RECENT / FILTERED TRANSACTIONS
@@ -1290,7 +1184,7 @@ function App() {
           <div className="welcome-row"><div><p className="eyebrow">{pageConfig.eyebrow}</p><h1>{pageConfig.title}</h1><p className="subtitle">{pageConfig.subtitle}</p></div><div className="page-icon-card"><PageIcon size={21} /></div></div>
           <div className="content-grid">
             <section className="panel chart-panel"><div className="panel-header"><div><p className="panel-kicker">SPENDING ACTIVITY</p><h3>Spending trend</h3></div></div><div className="chart-wrap analytics-chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={realChartData}><defs><linearGradient id="analyticsGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopOpacity={0.25} /><stop offset="100%" stopOpacity={0} /></linearGradient></defs><XAxis dataKey="day" axisLine={false} tickLine={false} /><YAxis hide /><Tooltip formatter={(value) => [`₹${Number(value).toLocaleString("en-IN")}`, "Spent"]} /><Area type="monotone" dataKey="amount" strokeWidth={2.5} fill="url(#analyticsGradient)" /></AreaChart></ResponsiveContainer></div></section>
-            <section className="panel category-panel"><div className="panel-header"><div><p className="panel-kicker">BREAKDOWN</p><h3>Top categories</h3></div></div><div className="category-bars">{categoryData.length ? categoryData.slice(0, 8).map((item) => { const CategoryIcon = getCategoryIcon(item.category); const categoryColor = getCategoryColor(item.category); return (<div className="category-row" key={item.category}><div className="category-row-top"><div className="category-info"><span className="category-icon" style={{ "--category-color": categoryColor, "--category-soft": `${categoryColor}22` }}><CategoryIcon size={15} /></span><div className="category-name-wrap"><span>{item.category}</span><small>₹{item.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</small></div></div><strong className="category-percentage">{item.percentage}%</strong></div><div className="bar" style={{ "--category-color": categoryColor }}><span style={{ width: `${Math.max(item.percentage, 4)}%`, background: categoryColor }} /></div></div>); }) : <div className="page-empty-state">No spending data yet.</div>}</div></section>
+            <section className="panel category-panel"><div className="panel-header"><div><p className="panel-kicker">BREAKDOWN</p><h3>Top categories</h3></div></div><div className="category-bars">{categoryData.length ? categoryData.slice(0, 6).map((item) => (<div className="category-row" key={item.category}><div className="category-info"><span className={`category-dot ${getCategoryClass(item.category)}`} style={{ background: getCategoryColor(item.category) }} /><span>{item.category}</span><strong>{item.percentage}%</strong></div><div className="bar"><span style={{ width: `${item.percentage}%` }} /></div><p>₹{item.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</p></div>)) : <div className="page-empty-state">No spending data yet.</div>}</div></section>
           </div>
         </section>
       );
@@ -1298,97 +1192,12 @@ function App() {
 
     if (activePage === "budgets") {
       return (
-        <section className="dashboard page-dashboard"><div className="welcome-row"><div><p className="eyebrow">{pageConfig.eyebrow}</p><h1>{pageConfig.title}</h1><p className="subtitle">{pageConfig.subtitle}</p></div><div className="page-icon-card"><PageIcon size={21} /></div></div><section className="panel budget-page-card"><div className="budget-page-top"><div><p className="panel-kicker">MONTHLY BUDGET</p><h2>₹{MONTHLY_BUDGET.toLocaleString("en-IN")}</h2><span>{monthLabel(selectedMonthDate)} spending limit</span></div><div className="budget-page-number">{budgetUsedPercentage.toFixed(0)}%</div></div><div className="budget-progress"><span style={{ width: `${Math.min(budgetUsedPercentage, 100)}%` }} /></div><div className="budget-page-stats"><div><span>Spent</span><strong>₹{thisMonthSpent.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</strong></div><div><span>Remaining</span><strong>₹{Math.max(budgetRemaining, 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</strong></div></div></section></section>
+        <section className="dashboard page-dashboard"><div className="welcome-row"><div><p className="eyebrow">{pageConfig.eyebrow}</p><h1>{pageConfig.title}</h1><p className="subtitle">{pageConfig.subtitle}</p></div><div className="page-icon-card"><PageIcon size={21} /></div></div><section className="panel budget-page-card"><div className="budget-page-top"><div><p className="panel-kicker">MONTHLY BUDGET</p><h2>₹{MONTHLY_BUDGET.toLocaleString("en-IN")}</h2><span>This month's spending limit</span></div><div className="budget-page-number">{budgetUsedPercentage.toFixed(0)}%</div></div><div className="budget-progress"><span style={{ width: `${Math.min(budgetUsedPercentage, 100)}%` }} /></div><div className="budget-page-stats"><div><span>Spent</span><strong>₹{thisMonthSpent.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</strong></div><div><span>Remaining</span><strong>₹{Math.max(budgetRemaining, 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</strong></div></div></section></section>
       );
     }
 
     return (
-      <section className="dashboard page-dashboard">
-        <div className="welcome-row">
-          <div>
-            <p className="eyebrow">{pageConfig.eyebrow}</p>
-            <h1>{pageConfig.title}</h1>
-            <p className="subtitle">{pageConfig.subtitle}</p>
-          </div>
-          <div className="page-icon-card"><PageIcon size={21} /></div>
-        </div>
-
-        <section className="panel settings-page-card">
-          <div className="settings-profile">
-            <div className="settings-avatar">
-              {user?.name?.charAt(0)?.toUpperCase() || "P"}
-            </div>
-            <div>
-              <h3>{user?.name || "Pooj"}</h3>
-              <p>{user?.email || ""}</p>
-            </div>
-          </div>
-
-          <div className="income-setting-section">
-            <div className="income-setting-heading">
-              <div className="income-setting-icon">
-                <Wallet size={18} />
-              </div>
-              <div>
-                <p className="panel-kicker">MONTHLY INCOME</p>
-                <h3>Set your monthly income</h3>
-                <span>
-                  This amount is used to calculate spending, savings and savings rate.
-                </span>
-              </div>
-            </div>
-
-            <div className="income-setting-form">
-              <div className="income-input-wrap">
-                <span>₹</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={monthlyIncomeInput}
-                  onChange={(e) => setMonthlyIncomeInput(e.target.value)}
-                  placeholder={
-                    monthlyIncome > 0
-                      ? String(monthlyIncome)
-                      : "e.g. 50000"
-                  }
-                />
-              </div>
-
-              <button
-                type="button"
-                className="income-save-button"
-                onClick={saveMonthlyIncome}
-                disabled={!monthlyIncomeInput}
-              >
-                <PiggyBank size={15} />
-                Save income
-              </button>
-            </div>
-
-            <div className="income-setting-current">
-              <span>Current monthly income</span>
-              <strong>
-                {monthlyIncome > 0
-                  ? `₹${monthlyIncome.toLocaleString("en-IN")}`
-                  : "Not set"}
-              </strong>
-            </div>
-          </div>
-
-          <div className="settings-row">
-            <div>
-              <strong>Account</strong>
-              <span>Your SpendVault personal account</span>
-            </div>
-            <Mail size={18} />
-          </div>
-
-          <button className="settings-logout" onClick={handleLogout}>
-            <LogOut size={17} /> Log out
-          </button>
-        </section>
-      </section>
+      <section className="dashboard page-dashboard"><div className="welcome-row"><div><p className="eyebrow">{pageConfig.eyebrow}</p><h1>{pageConfig.title}</h1><p className="subtitle">{pageConfig.subtitle}</p></div><div className="page-icon-card"><PageIcon size={21} /></div></div><section className="panel settings-page-card"><div className="settings-profile"><div className="settings-avatar">{user?.name?.charAt(0)?.toUpperCase() || "P"}</div><div><h3>{user?.name || "Pooj"}</h3><p>{user?.email || ""}</p></div></div><div className="settings-row"><div><strong>Account</strong><span>Your SpendVault personal account</span></div><Mail size={18} /></div><button className="settings-logout" onClick={handleLogout}><LogOut size={17} /> Log out</button></section></section>
     );
   };
 
@@ -1818,7 +1627,7 @@ function App() {
   ========================================================= */
 
   return (
-    <div className={`app-shell ${theme === "light" ? "light-theme" : "dark-theme"}`}>
+    <div className="app-shell">
 
       {/* SIDEBAR */}
 
@@ -1902,25 +1711,7 @@ function App() {
           </div>
 
           <div className="top-actions">
-            <button
-              className="icon-button theme-toggle"
-              onClick={toggleTheme}
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-
-            <button
-              className="icon-button pdf-export-button"
-              onClick={exportToPdf}
-              title="Export current dashboard as PDF"
-              aria-label="Export current dashboard as PDF"
-            >
-              <FileDown size={18} />
-            </button>
-
-            <button className="icon-button notification-button">
+            <button className="icon-button">
               <Bell
                 size={19}
               />
@@ -1984,651 +1775,1147 @@ function App() {
         {/* PAGE CONTENT */}
 
         {activePage === "overview" ? (
-          <section className="dashboard">
+        <section className="dashboard">
 
-            <div className="welcome-row">
-              <div>
-                <p className="eyebrow">SPENDVAULT OVERVIEW</p>
-                <h1>
-                  Good evening, {user?.name || "Pooj"} <span>👋</span>
-                </h1>
-                <p className="subtitle">
-                  A month-by-month view of where your money goes.
-                </p>
-              </div>
+          {/* WELCOME */}
 
-              <button
-                className="add-button"
-                onClick={() => setShowAddExpense(true)}
-              >
-                <Plus size={17} />
-                Add expense
-              </button>
+          <div className="welcome-row">
+            <div>
+              <p className="eyebrow">
+                SPENDVAULT OVERVIEW
+              </p>
+
+              <h1>
+                Good evening,{" "}
+                {user?.name ||
+                  "Pooj"}{" "}
+                <span>
+                  👋
+                </span>
+              </h1>
+
+              <p className="subtitle">
+                Here's a clear
+                view of your
+                spending.
+              </p>
             </div>
 
-            {error && (
-              <div className="error-banner">
-                {error}
-              </div>
-            )}
+            <button
+              className="add-button"
+              onClick={() =>
+                setShowAddExpense(
+                  true
+                )
+              }
+            >
+              <Plus size={18} />
+              Add expense
+            </button>
+          </div>
 
-            {/* MONTH CONTROL */}
-            <section className="month-control panel">
-              <div className="month-control-left">
-                <div className="month-control-icon">
-                  <CalendarRange size={17} />
+
+          {/* API ERROR */}
+
+          {error && (
+            <div
+              style={{
+                marginBottom:
+                  "20px",
+                padding:
+                  "12px 16px",
+                borderRadius:
+                  "12px",
+                background:
+                  "rgba(255,90,90,0.08)",
+                border:
+                  "1px solid rgba(255,90,90,0.2)",
+                color:
+                  "#ff9b9b",
+                fontSize:
+                  "14px",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+
+          {/* STATS */}
+
+          <div className="stats-grid">
+
+            {/* TOTAL */}
+
+            <div className="stat-card primary-stat">
+              <div className="stat-top">
+                <span>
+                  Total spent
+                </span>
+
+                <div className="stat-icon">
+                  <Wallet
+                    size={18}
+                  />
                 </div>
-
-                <div>
-                  <span className="month-control-label">
-                    MANAGE MONTH
-                  </span>
-                  <strong>{monthLabel(selectedMonthDate)}</strong>
-                </div>
               </div>
 
-              <div className="month-control-actions">
-                <button
-                  type="button"
-                  className="month-arrow"
-                  onClick={() => shiftSelectedMonth(-1)}
-                  title="Previous month"
-                >
-                  <ChevronLeft size={17} />
-                </button>
+              <h2>
+                ₹
+                {totalSpent.toLocaleString(
+                  "en-IN",
+                  {
+                    maximumFractionDigits: 0,
+                  }
+                )}
+              </h2>
 
-                <input
-                  type="month"
-                  value={selectedMonthKey}
-                  onChange={(e) => setSelectedMonthKey(e.target.value)}
-                  aria-label="Select month"
+              <div className="stat-change positive">
+                <ArrowDownRight
+                  size={15}
                 />
 
-                <button
-                  type="button"
-                  className="month-arrow"
-                  onClick={() => shiftSelectedMonth(1)}
-                  title="Next month"
-                >
-                  <ChevronRight size={17} />
-                </button>
-
-                <button
-                  type="button"
-                  className="today-month-button"
-                  onClick={() => setSelectedMonthKey(monthKey(new Date()))}
-                >
-                  Current
-                </button>
+                8.4%{" "}
+                <span>
+                  vs last month
+                </span>
               </div>
-            </section>
+            </div>
 
-            {/* MONTHLY MONEY FLOW KPI CARDS */}
-            <div className="stats-grid monthly-stats-grid income-stats-grid">
 
-              <div className="stat-card stat-income">
-                <div className="stat-top">
-                  <span>Monthly income</span>
-                  <div className="stat-icon">
-                    <Wallet size={15} />
-                  </div>
-                </div>
+            {/* THIS MONTH */}
 
-                <h2>
-                  {monthlyIncome > 0
-                    ? `₹${monthlyIncome.toLocaleString("en-IN", {
-                        maximumFractionDigits: 0,
-                      })}`
-                    : "Not set"}
-                </h2>
+            <div className="stat-card">
+              <div className="stat-top">
+                <span>
+                  This month
+                </span>
 
-                <div className="stat-change">
-                  {monthlyIncome > 0
-                    ? `For ${shortMonthLabel(selectedMonthDate)}`
-                    : "Set it from Settings"}
+                <div className="stat-icon">
+                  <Receipt
+                    size={18}
+                  />
                 </div>
               </div>
 
-              <div className="stat-card stat-spend">
-                <div className="stat-top">
-                  <span>This month spent</span>
-                  <div className="stat-icon">
-                    <CircleDollarSign size={15} />
-                  </div>
-                </div>
-
-                <h2>
-                  ₹{thisMonthSpent.toLocaleString("en-IN", {
+              <h2>
+                ₹
+                {thisMonthSpent.toLocaleString(
+                  "en-IN",
+                  {
                     maximumFractionDigits: 0,
-                  })}
-                </h2>
+                  }
+                )}
+              </h2>
 
+              <div className="stat-change">
+                {expensesLoading
+                  ? "Loading..."
+                  : `${thisMonthExpenses.length} transactions`}
+              </div>
+            </div>
+
+
+            {/* AVERAGE */}
+
+            <div className="stat-card">
+              <div className="stat-top">
+                <span>
+                  Average expense
+                </span>
+
+                <div className="stat-icon">
+                  <ArrowUpRight
+                    size={18}
+                  />
+                </div>
+              </div>
+
+              <h2>
+                ₹
+                {averageExpense.toLocaleString(
+                  "en-IN",
+                  {
+                    maximumFractionDigits: 0,
+                  }
+                )}
+              </h2>
+
+              <div className="stat-change negative">
+                <ArrowUpRight
+                  size={15}
+                />
+
+                12.2%{" "}
+                <span>
+                  vs last month
+                </span>
+              </div>
+            </div>
+
+
+            {/* BUDGET */}
+
+            <div className="stat-card balance-card">
+              <div className="stat-top">
+                <span>
+                  Budget remaining
+                </span>
+
+                <div className="budget-ring">
+                  {Math.round(
+                    budgetUsedPercentage
+                  )}
+                  %
+                </div>
+              </div>
+
+              <h2>
+                ₹
+                {budgetRemaining.toLocaleString(
+                  "en-IN",
+                  {
+                    maximumFractionDigits: 0,
+                  }
+                )}
+              </h2>
+
+              <div className="progress">
+                <span
+                  style={{
+                    width: `${budgetUsedPercentage}%`,
+                  }}
+                />
+              </div>
+
+              <div className="budget-label">
+                <span>
+                  ₹
+                  {thisMonthSpent.toLocaleString(
+                    "en-IN",
+                    {
+                      maximumFractionDigits: 0,
+                    }
+                  )}{" "}
+                  spent
+                </span>
+
+                <span>
+                  ₹
+                  {MONTHLY_BUDGET.toLocaleString(
+                    "en-IN"
+                  )}{" "}
+                  budget
+                </span>
+              </div>
+            </div>
+          </div>
+
+
+          {/* FILTER BAR */}
+
+          <div
+            style={{
+              display:
+                "flex",
+              alignItems:
+                "center",
+              gap: "10px",
+              flexWrap:
+                "wrap",
+              marginTop:
+                "22px",
+              marginBottom:
+                "22px",
+              padding:
+                "14px",
+              background:
+                "rgba(255,255,255,0.025)",
+              border:
+                "1px solid rgba(255,255,255,0.07)",
+              borderRadius:
+                "12px",
+            }}
+          >
+            <div
+              style={{
+                display:
+                  "flex",
+                alignItems:
+                  "center",
+                gap: "7px",
+                color:
+                  "#9ca3af",
+                fontSize:
+                  "13px",
+              }}
+            >
+              <Filter
+                size={15}
+              />
+
+              Filters
+            </div>
+
+            <select
+              value={
+                categoryFilter
+              }
+              onChange={(e) =>
+                setCategoryFilter(
+                  e.target.value
+                )
+              }
+              style={{
+                background:
+                  "#111318",
+                color:
+                  "#d8dce4",
+                border:
+                  "1px solid rgba(255,255,255,0.08)",
+                borderRadius:
+                  "8px",
+                padding:
+                  "8px 10px",
+                outline:
+                  "none",
+                fontSize:
+                  "12px",
+              }}
+            >
+              <option value="All">
+                All categories
+              </option>
+
+              {categories.map(
+                (category) => (
+                  <option
+                    key={
+                      category
+                    }
+                    value={
+                      category
+                    }
+                  >
+                    {category}
+                  </option>
+                )
+              )}
+            </select>
+
+            <select
+              value={dateFilter}
+              onChange={(e) =>
+                setDateFilter(
+                  e.target.value
+                )
+              }
+              style={{
+                background:
+                  "#111318",
+                color:
+                  "#d8dce4",
+                border:
+                  "1px solid rgba(255,255,255,0.08)",
+                borderRadius:
+                  "8px",
+                padding:
+                  "8px 10px",
+                outline:
+                  "none",
+                fontSize:
+                  "12px",
+              }}
+            >
+              <option value="all">
+                All time
+              </option>
+
+              <option value="today">
+                Today
+              </option>
+
+              <option value="this-week">
+                This week
+              </option>
+
+              <option value="this-month">
+                This month
+              </option>
+
+              <option value="last-month">
+                Last month
+              </option>
+
+              <option value="custom">
+                Custom range
+              </option>
+            </select>
+
+            {dateFilter ===
+              "custom" && (
+              <>
                 <div
-                  className={`stat-change ${
-                    monthChangePercentage > 0
-                      ? "negative"
-                      : monthChangePercentage < 0
-                      ? "positive"
-                      : ""
-                  }`}
+                  style={{
+                    display:
+                      "flex",
+                    alignItems:
+                      "center",
+                    gap: "6px",
+                  }}
                 >
-                  {monthChangePercentage > 0 ? (
-                    <ArrowUpRight size={13} />
-                  ) : monthChangePercentage < 0 ? (
-                    <ArrowDownRight size={13} />
-                  ) : null}
+                  <CalendarDays
+                    size={14}
+                    color="#727b8d"
+                  />
 
-                  {previousMonthSpent > 0
-                    ? `${Math.abs(monthChangePercentage).toFixed(1)}%`
-                    : "—"}{" "}
-                  <span>vs {shortMonthLabel(previousMonthDate)}</span>
-                </div>
-              </div>
-
-              <div className="stat-card stat-savings">
-                <div className="stat-top">
-                  <span>Savings</span>
-                  <div className="stat-icon">
-                    <PiggyBank size={15} />
-                  </div>
-                </div>
-
-                <h2 className={monthlySavings < 0 ? "danger-value" : ""}>
-                  {monthlyIncome > 0
-                    ? `${monthlySavings < 0 ? "- " : ""}₹${Math.abs(
-                        monthlySavings
-                      ).toLocaleString("en-IN", {
-                        maximumFractionDigits: 0,
-                      })}`
-                    : "Not set"}
-                </h2>
-
-                <div className="stat-change">
-                  {monthlyIncome > 0
-                    ? monthlySavings >= 0
-                      ? "Available to save"
-                      : "Over income"
-                    : "Add monthly income first"}
-                </div>
-              </div>
-
-              <div className="stat-card stat-rate">
-                <div className="stat-top">
-                  <span>Savings rate</span>
-                  <div className="budget-ring savings-ring">
-                    {monthlyIncome > 0
-                      ? `${Math.max(savingsRate, 0).toFixed(0)}%`
-                      : "—"}
-                  </div>
-                </div>
-
-                <h2>
-                  {monthlyIncome > 0
-                    ? `${savingsRate.toFixed(0)}%`
-                    : "—"}
-                </h2>
-
-                <div className="progress savings-progress">
-                  <span
+                  <input
+                    type="date"
+                    value={
+                      customStartDate
+                    }
+                    onChange={(e) =>
+                      setCustomStartDate(
+                        e.target
+                          .value
+                      )
+                    }
                     style={{
-                      width: `${Math.min(Math.max(savingsRate, 0), 100)}%`,
+                      background:
+                        "#111318",
+                      color:
+                        "#d8dce4",
+                      border:
+                        "1px solid rgba(255,255,255,0.08)",
+                      borderRadius:
+                        "8px",
+                      padding:
+                        "7px 8px",
+                      outline:
+                        "none",
+                      fontSize:
+                        "12px",
                     }}
                   />
                 </div>
 
-                <div className="budget-label">
-                  <span>
-                    {monthlyIncome > 0
-                      ? savingsRate >= 0
-                        ? "Income saved"
-                        : "Negative savings"
-                      : "Set income"}
-                  </span>
-                  <span>{shortMonthLabel(selectedMonthDate)}</span>
+                <span
+                  style={{
+                    color:
+                      "#555d6c",
+                    fontSize:
+                      "12px",
+                  }}
+                >
+                  to
+                </span>
+
+                <input
+                  type="date"
+                  value={
+                    customEndDate
+                  }
+                  onChange={(e) =>
+                    setCustomEndDate(
+                      e.target
+                        .value
+                    )
+                  }
+                  style={{
+                    background:
+                      "#111318",
+                    color:
+                      "#d8dce4",
+                    border:
+                      "1px solid rgba(255,255,255,0.08)",
+                    borderRadius:
+                      "8px",
+                    padding:
+                      "7px 8px",
+                    outline:
+                      "none",
+                    fontSize:
+                      "12px",
+                  }}
+                />
+              </>
+            )}
+
+            {hasActiveFilters && (
+              <button
+                onClick={
+                  clearFilters
+                }
+                style={{
+                  border:
+                    "none",
+                  background:
+                    "transparent",
+                  color:
+                    "#9ca3af",
+                  cursor:
+                    "pointer",
+                  fontSize:
+                    "12px",
+                  padding:
+                    "7px 4px",
+                }}
+              >
+                Clear filters
+              </button>
+            )}
+
+            <span
+              style={{
+                marginLeft:
+                  "auto",
+                color:
+                  "#697180",
+                fontSize:
+                  "12px",
+              }}
+            >
+              {filteredExpenses.length}{" "}
+              result
+              {filteredExpenses.length !==
+              1
+                ? "s"
+                : ""}
+            </span>
+          </div>
+
+
+          {/* CHART + CATEGORY */}
+
+          <div className="content-grid">
+
+            {/* SPENDING ACTIVITY */}
+
+            <section className="panel spending-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-kicker">
+                    OVERVIEW
+                  </p>
+
+                  <h3>
+                    Spending activity
+                  </h3>
                 </div>
+
+                <select
+                  value={
+                    chartPeriod
+                  }
+                  onChange={(e) =>
+                    setChartPeriod(
+                      e.target
+                        .value
+                    )
+                  }
+                  style={{
+                    background:
+                      "#111318",
+                    color:
+                      "#aeb5c2",
+                    border:
+                      "1px solid rgba(255,255,255,0.08)",
+                    borderRadius:
+                      "8px",
+                    padding:
+                      "7px 9px",
+                    outline:
+                      "none",
+                    fontSize:
+                      "12px",
+                    cursor:
+                      "pointer",
+                  }}
+                >
+                  <option>
+                    This week
+                  </option>
+
+                  <option>
+                    This month
+                  </option>
+
+                  <option>
+                    Last month
+                  </option>
+                </select>
               </div>
-            </div>
 
-            {/* MONTHLY TREND + CATEGORY PIE */}
-            <div className="content-grid analytics-main-grid">
-
-              <section className="panel chart-panel monthly-trend-panel income-comparison-panel">
-                <div className="panel-header">
-                  <div>
-                    <p className="panel-kicker">INCOME VS SPENDING</p>
-                    <h3>Where your money stands</h3>
-                    <span className="panel-subtext">
-                      {monthLabel(selectedMonthDate)} • income, expenses and available savings
-                    </span>
-                  </div>
-                </div>
-
-                <div className="chart-wrap monthly-chart-wrap">
-                  {monthlyIncome > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={incomeComparisonData}
-                        barCategoryGap="24%"
+              <div className="chart-wrap">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
+                  <AreaChart
+                    data={
+                      realChartData
+                    }
+                  >
+                    <defs>
+                      <linearGradient
+                        id="spendGradient"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
                       >
-                        <XAxis
-                          dataKey="label"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 9 }}
-                        />
-
-                        <YAxis
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 8 }}
-                          tickFormatter={(value) =>
-                            `₹${Number(value).toLocaleString("en-IN")}`
+                        <stop
+                          offset="0%"
+                          stopOpacity={
+                            0.25
                           }
                         />
 
-                        <Tooltip
-                          formatter={(value, name) => [
-                            `₹${Number(value).toLocaleString("en-IN")}`,
-                            name === "income"
-                              ? "Income"
-                              : name === "spending"
-                              ? "Expenses"
-                              : "Savings",
-                          ]}
-                          contentStyle={{
-                            background: "#171b22",
-                            border: "1px solid rgba(255,255,255,.1)",
-                            borderRadius: "10px",
-                            color: "#fff",
-                          }}
+                        <stop
+                          offset="100%"
+                          stopOpacity={
+                            0
+                          }
                         />
+                      </linearGradient>
+                    </defs>
 
-                        <Bar
-                          dataKey="income"
-                          name="Income"
-                          fill="#22d3a0"
-                          radius={[5, 5, 0, 0]}
-                        />
-                        <Bar
-                          dataKey="spending"
-                          name="Expenses"
-                          fill="#4f8cff"
-                          radius={[5, 5, 0, 0]}
-                        />
-                        <Bar
-                          dataKey="savings"
-                          name="Savings"
-                          fill="#9b7cff"
-                          radius={[5, 5, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="income-chart-empty">
-                      <Wallet size={24} />
-                      <strong>Add your monthly income</strong>
-                      <span>Go to Settings → Monthly Income to activate this comparison.</span>
-                      <button
-                        type="button"
-                        className="inline-action-button"
-                        onClick={() => handleNavigation("settings")}
-                      >
-                        Open Settings
-                      </button>
-                    </div>
+                    <XAxis
+                      dataKey="day"
+                      axisLine={
+                        false
+                      }
+                      tickLine={
+                        false
+                      }
+                      tick={{
+                        fontSize:
+                          12,
+                      }}
+                    />
+
+                    <YAxis hide />
+
+                    <Tooltip
+                      cursor={{
+                        strokeDasharray:
+                          "4 4",
+                      }}
+                      formatter={(
+                        value
+                      ) => [
+                        `₹${Number(
+                          value
+                        ).toLocaleString(
+                          "en-IN"
+                        )}`,
+                        "Spent",
+                      ]}
+                      contentStyle={{
+                        borderRadius:
+                          "12px",
+                        border:
+                          "1px solid rgba(255,255,255,.1)",
+                      }}
+                    />
+
+                    <Area
+                      type="monotone"
+                      dataKey="amount"
+                      strokeWidth={
+                        2.5
+                      }
+                      fill="url(#spendGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+
+            {/* CATEGORY */}
+
+            <section className="panel category-panel">
+              <div className="panel-header">
+                <div>
+                  <p className="panel-kicker">
+                    BREAKDOWN
+                  </p>
+
+                  <h3>
+                    By category
+                  </h3>
+                </div>
+
+                <button className="more-button">
+                  <MoreHorizontal
+                    size={20}
+                  />
+                </button>
+              </div>
+
+              <div className="category-total">
+                <strong>
+                  ₹
+                  {thisMonthSpent.toLocaleString(
+                    "en-IN",
+                    {
+                      maximumFractionDigits: 0,
+                    }
                   )}
-                </div>
-              </section>
+                </strong>
 
-              <section className="panel category-panel pie-panel">
-                <div className="panel-header">
-                  <div>
-                    <p className="panel-kicker">SPENDING CATEGORIES</p>
-                    <h3>Where your money went</h3>
-                    <span className="panel-subtext">
-                      {monthLabel(selectedMonthDate)}
-                    </span>
-                  </div>
-                </div>
+                <span>
+                  this month
+                </span>
+              </div>
 
-                {categoryData.length > 0 ? (
-                  <>
-                    <div className="pie-chart-wrap">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPieChart>
-                          <Pie
-                            data={categoryData}
-                            dataKey="amount"
-                            nameKey="category"
-                            cx="50%"
-                            cy="48%"
-                            innerRadius="48%"
-                            outerRadius="76%"
-                            paddingAngle={2}
-                            stroke="none"
-                          >
-                            {categoryData.map((item) => (
-                              <Cell
-                                key={item.category}
-                                fill={getCategoryColor(item.category)}
-                              />
-                            ))}
-                          </Pie>
-
-                          <Tooltip
-                            formatter={(value, name) => [
-                              `₹${Number(value).toLocaleString("en-IN")}`,
-                              name,
-                            ]}
-                            contentStyle={{
-                              background: "#171b22",
-                              border: "1px solid rgba(255,255,255,.1)",
-                              borderRadius: "10px",
-                            }}
-                          />
-                        </RechartsPieChart>
-                      </ResponsiveContainer>
-
-                      <div className="pie-center">
-                        <strong>
-                          ₹{thisMonthSpent.toLocaleString("en-IN", {
-                            maximumFractionDigits: 0,
-                          })}
-                        </strong>
-                        <span>Total</span>
-                      </div>
-                    </div>
-
-                    <div className="pie-legend">
-                      {categoryData.slice(0, 6).map((item) => (
-                        <div className="pie-legend-item" key={item.category}>
-                          <span
-                            className="pie-legend-dot"
-                            style={{
-                              background: getCategoryColor(item.category),
-                            }}
-                          />
-                          <span className="pie-legend-name">
-                            {item.category}
-                          </span>
-                          <strong>{item.percentage}%</strong>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="category-empty">
-                    <div className="category-empty-icon">
-                      <PieChart size={20} />
-                    </div>
-                    <span>No spending data for this month</span>
-                    <small>Add an expense or select another month.</small>
-                  </div>
-                )}
-              </section>
-            </div>
-
-            {/* TRANSACTIONS + SMART INSIGHTS */}
-            <div className="dashboard-lower-grid">
-
-              <section className="panel transactions-panel">
-                <div className="panel-header">
-                  <div>
-                    <p className="panel-kicker">ACTIVITY</p>
-                    <h3>
-                      Recent transactions
-                    </h3>
-                    <span className="panel-subtext">
-                      {thisMonthExpenses.length} transaction
-                      {thisMonthExpenses.length === 1 ? "" : "s"} in{" "}
-                      {shortMonthLabel(selectedMonthDate)}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="view-all"
-                    onClick={() => handleNavigation("transactions")}
-                  >
-                    View all <ArrowUpRight size={14} />
-                  </button>
-                </div>
-
-                <div className="transactions-list">
-                  {thisMonthExpenses.length > 0 ? (
-                    [...thisMonthExpenses]
-                      .sort(
-                        (a, b) =>
-                          new Date(b.date) - new Date(a.date)
-                      )
-                      .slice(0, 6)
-                      .map((transaction) => {
-                        const Icon = getCategoryIcon(transaction.category);
-
-                        return (
-                          <div
-                            className="transaction"
-                            key={transaction._id}
-                          >
-                            <div
-                              className={`transaction-icon ${getCategoryClass(
-                                transaction.category
+              <div className="category-bars">
+                {categoryData.length >
+                0 ? (
+                  categoryData
+                    .slice(0, 4)
+                    .map(
+                      (item) => (
+                        <div
+                          className="category-row"
+                          key={
+                            item.category
+                          }
+                        >
+                          <div className="category-info">
+                            <span
+                              className={`category-dot ${getCategoryClass(
+                                item.category
                               )}`}
                               style={{
-                                color: getCategoryColor(transaction.category),
+                                background:
+                                  getCategoryColor(
+                                    item.category
+                                  ),
                               }}
-                            >
-                              <Icon size={17} />
-                            </div>
+                            />
 
-                            <div className="transaction-main">
-                              <strong>{transaction.title}</strong>
-                              <span>
-                                {transaction.category} •{" "}
-                                {formatDate(transaction.date)}
-                              </span>
-                            </div>
-
-                            <span className="transaction-date">
-                              {formatDate(transaction.date)}
+                            <span>
+                              {
+                                item.category
+                              }
                             </span>
 
-                            <strong className="transaction-amount">
-                              {transaction.currency === "INR" ||
-                              !transaction.currency
-                                ? "₹"
-                                : `${transaction.currency} `}
-                              {Number(transaction.amount).toLocaleString(
-                                "en-IN"
-                              )}
-                            </strong>
-
-                            <button
-                              className="more-button"
-                              onClick={() =>
-                                setOpenTransactionMenu(
-                                  openTransactionMenu === transaction._id
-                                    ? null
-                                    : transaction._id
-                                )
+                            <strong>
+                              {
+                                item.percentage
                               }
-                              title="Actions"
-                            >
-                              <MoreHorizontal size={17} />
-                            </button>
+                              %
+                            </strong>
+                          </div>
 
-                            {openTransactionMenu === transaction._id && (
-                              <div className="action-menu">
-                                <button
-                                  onClick={() => {
-                                    setEditingExpense(transaction);
-                                    setOpenTransactionMenu(null);
-                                  }}
-                                >
-                                  <Pencil size={14} />
-                                  Edit expense
-                                </button>
+                          <div className="bar">
+                            <span
+                              style={{
+                                width: `${item.percentage}%`,
+                              }}
+                            />
+                          </div>
 
-                                <button
-                                  className="delete"
-                                  onClick={() => {
-                                    setDeletingExpense(transaction);
-                                    setOpenTransactionMenu(null);
-                                  }}
-                                >
-                                  <Trash2 size={14} />
-                                  Delete expense
-                                </button>
-                              </div>
+                          <p>
+                            ₹
+                            {item.amount.toLocaleString(
+                              "en-IN",
+                              {
+                                maximumFractionDigits: 0,
+                              }
                             )}
-                          </div>
-                        );
-                      })
-                  ) : (
-                    <div className="page-empty-state compact-empty">
-                      <Receipt size={23} />
-                      <span>No transactions in {monthLabel(selectedMonthDate)}.</span>
-                      <button
-                        className="inline-action-button"
-                        onClick={() => setShowAddExpense(true)}
+                          </p>
+                        </div>
+                      )
+                    )
+                ) : (
+                  <div
+                    style={{
+                      padding:
+                        "30px 0",
+                      textAlign:
+                        "center",
+                      color:
+                        "#666f80",
+                      fontSize:
+                        "13px",
+                    }}
+                  >
+                    No expenses
+                    this month
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+
+
+          {/* TRANSACTIONS */}
+
+          <section className="panel transactions-panel">
+            <div className="panel-header">
+              <div>
+                <p className="panel-kicker">
+                  ACTIVITY
+                </p>
+
+                <h3>
+                  Recent transactions
+                </h3>
+              </div>
+
+              <button className="view-all">
+                View all{" "}
+                <ArrowUpRight
+                  size={15}
+                />
+              </button>
+            </div>
+
+
+            <div className="transactions-list">
+
+              {expenses.length ===
+              0 ? (
+                fallbackTransactions.map(
+                  (
+                    transaction
+                  ) => {
+                    const Icon =
+                      transaction.icon;
+
+                    return (
+                      <div
+                        className="transaction"
+                        key={
+                          transaction.title
+                        }
                       >
-                        <Plus size={14} /> Add expense
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </section>
+                        <div className="transaction-icon">
+                          <Icon
+                            size={19}
+                          />
+                        </div>
 
-              <div className="dashboard-side-stack">
-
-                <section className="panel insights-panel">
-                  <div className="panel-header">
-                    <div>
-                      <p className="panel-kicker">SMART INSIGHTS</p>
-                      <h3>What your spending says</h3>
-                    </div>
-                    <div className="insight-header-icon">
-                      <Lightbulb size={16} />
-                    </div>
-                  </div>
-
-                  <div className="insights-list">
-                    {smartInsights.length > 0 ? (
-                      smartInsights.map((insight, index) => {
-                        const InsightIcon = insight.icon;
-
-                        return (
-                          <div
-                            className={`insight-card ${insight.type}`}
-                            key={`${insight.title}-${index}`}
-                          >
-                            <div className="insight-icon">
-                              <InsightIcon size={14} />
-                            </div>
-
-                            <div>
-                              <strong>{insight.title}</strong>
-                              <span>{insight.text}</span>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="page-empty-state compact-empty">
-                        Add expenses to unlock insights.
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                <section className="panel savings-panel">
-                  <div className="panel-header">
-                    <div>
-                      <p className="panel-kicker">SAVINGS GOAL</p>
-                      <h3>Keep an amount unspent</h3>
-                    </div>
-                    <div className="goal-icon">
-                      <PiggyBank size={16} />
-                    </div>
-                  </div>
-
-                  <div className="goal-note">
-                    Your goal is measured against the savings available after this month's expenses.
-                  </div>
-
-                  {savingsGoal > 0 ? (
-                    <>
-                      <div className="goal-summary">
-                        <div>
-                          <span>Target</span>
+                        <div className="transaction-main">
                           <strong>
-                            ₹{savingsGoal.toLocaleString("en-IN")}
+                            {
+                              transaction.title
+                            }
                           </strong>
+
+                          <span>
+                            {
+                              transaction.category
+                            }
+                          </span>
                         </div>
 
-                        <div className="goal-percent">
-                          {Math.round(savingsProgress)}%
-                        </div>
-                      </div>
-
-                      <div className="goal-progress">
-                        <span
-                          style={{
-                            width: `${savingsProgress}%`,
-                          }}
-                        />
-                      </div>
-
-                      <div className="goal-footer">
-                        <span>
-                          ₹{Math.min(
-                            Math.max(monthlySavings, 0),
-                            savingsGoal
-                          ).toLocaleString("en-IN")} available
+                        <span className="transaction-date">
+                          {
+                            transaction.date
+                          }
                         </span>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSavingsGoalInput(String(savingsGoal));
-                            setSavingsGoal(0);
-                          }}
-                        >
-                          Edit
+                        <strong className="transaction-amount">
+                          {
+                            transaction.amount
+                          }
+                        </strong>
+
+                        <button className="more-button">
+                          <MoreHorizontal
+                            size={19}
+                          />
                         </button>
                       </div>
-                    </>
-                  ) : (
-                    <div className="goal-setter">
-                      <div className="goal-input-wrap">
-                        <span>₹</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={savingsGoalInput}
-                          onChange={(e) =>
-                            setSavingsGoalInput(e.target.value)
-                          }
-                          placeholder="e.g. 5000"
-                        />
-                      </div>
+                    );
+                  }
+                )
+              ) : recentTransactions.length >
+                0 ? (
+                recentTransactions.map(
+                  (
+                    transaction
+                  ) => {
+                    const Icon =
+                      transaction.icon;
 
-                      <button
-                        type="button"
-                        className="goal-save-button"
-                        onClick={saveSavingsGoal}
-                        disabled={!savingsGoalInput}
+                    return (
+                      <div
+                        className="transaction"
+                        key={
+                          transaction._id
+                        }
+                        style={{
+                          position:
+                            "relative",
+                        }}
                       >
-                        <Target size={14} />
-                        Set goal
-                      </button>
-                    </div>
-                  )}
-                </section>
+                        <div className="transaction-icon">
+                          <Icon
+                            size={19}
+                          />
+                        </div>
 
-              </div>
+                        <div className="transaction-main">
+                          <strong>
+                            {
+                              transaction.title
+                            }
+                          </strong>
+
+                          <span>
+                            {
+                              transaction.category
+                            }
+                          </span>
+                        </div>
+
+                        <span className="transaction-date">
+                          {formatDate(
+                            transaction.date
+                          )}
+                        </span>
+
+                        <strong className="transaction-amount">
+                          {transaction.currency ===
+                            "INR" ||
+                          !transaction.currency
+                            ? "₹"
+                            : `${transaction.currency} `}
+
+                          {Number(
+                            transaction.amount
+                          ).toLocaleString(
+                            "en-IN"
+                          )}
+                        </strong>
+
+                        <button
+                          className="more-button"
+                          onClick={() =>
+                            setOpenTransactionMenu(
+                              openTransactionMenu ===
+                                transaction._id
+                                ? null
+                                : transaction._id
+                            )
+                          }
+                          title="Actions"
+                        >
+                          <MoreHorizontal
+                            size={19}
+                          />
+                        </button>
+
+
+                        {/* ACTION MENU */}
+
+                        {openTransactionMenu ===
+                          transaction._id && (
+                          <div
+                            style={{
+                              position:
+                                "absolute",
+                              right:
+                                "8px",
+                              top:
+                                "calc(100% - 2px)",
+                              zIndex:
+                                20,
+                              minWidth:
+                                "150px",
+                              background:
+                                "#17191e",
+                              border:
+                                "1px solid rgba(255,255,255,0.1)",
+                              borderRadius:
+                                "10px",
+                              padding:
+                                "5px",
+                              boxShadow:
+                                "0 14px 40px rgba(0,0,0,0.45)",
+                            }}
+                          >
+                            <button
+                              onClick={() => {
+                                setEditingExpense(
+                                  transaction
+                                );
+
+                                setOpenTransactionMenu(
+                                  null
+                                );
+                              }}
+                              style={{
+                                width:
+                                  "100%",
+                                display:
+                                  "flex",
+                                alignItems:
+                                  "center",
+                                gap:
+                                  "9px",
+                                border:
+                                  "none",
+                                background:
+                                  "transparent",
+                                color:
+                                  "#d8dce4",
+                                padding:
+                                  "9px 10px",
+                                borderRadius:
+                                  "7px",
+                                cursor:
+                                  "pointer",
+                                fontSize:
+                                  "12px",
+                                textAlign:
+                                  "left",
+                              }}
+                            >
+                              <Pencil
+                                size={
+                                  14
+                                }
+                              />
+
+                              Edit expense
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setDeletingExpense(
+                                  transaction
+                                );
+
+                                setOpenTransactionMenu(
+                                  null
+                                );
+                              }}
+                              style={{
+                                width:
+                                  "100%",
+                                display:
+                                  "flex",
+                                alignItems:
+                                  "center",
+                                gap:
+                                  "9px",
+                                border:
+                                  "none",
+                                background:
+                                  "transparent",
+                                color:
+                                  "#f87171",
+                                padding:
+                                  "9px 10px",
+                                borderRadius:
+                                  "7px",
+                                cursor:
+                                  "pointer",
+                                fontSize:
+                                  "12px",
+                                textAlign:
+                                  "left",
+                              }}
+                            >
+                              <Trash2
+                                size={
+                                  14
+                                }
+                              />
+
+                              Delete expense
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                )
+              ) : (
+                <div
+                  style={{
+                    padding:
+                      "40px 20px",
+                    textAlign:
+                      "center",
+                  }}
+                >
+                  <Search
+                    size={28}
+                    color="#555d6c"
+                    style={{
+                      marginBottom:
+                        "10px",
+                    }}
+                  />
+
+                  <div
+                    style={{
+                      color:
+                        "#aab1bf",
+                      fontSize:
+                        "14px",
+                      marginBottom:
+                        "5px",
+                    }}
+                  >
+                    No expenses found
+                  </div>
+
+                  <div
+                    style={{
+                      color:
+                        "#5f6878",
+                      fontSize:
+                        "12px",
+                    }}
+                  >
+                    Try changing
+                    your search or
+                    filters.
+                  </div>
+
+                  {hasActiveFilters && (
+                    <button
+                      onClick={
+                        clearFilters
+                      }
+                      style={{
+                        marginTop:
+                          "14px",
+                        border:
+                          "none",
+                        background:
+                          "#f4f4f4",
+                        color:
+                          "#111",
+                        padding:
+                          "8px 12px",
+                        borderRadius:
+                          "7px",
+                        cursor:
+                          "pointer",
+                        fontSize:
+                          "12px",
+                        fontWeight:
+                          "600",
+                      }}
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              )}
+
             </div>
           </section>
+        </section>
         ) : (
           renderSecondaryPage()
         )}
