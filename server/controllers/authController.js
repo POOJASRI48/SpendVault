@@ -82,6 +82,8 @@ export const login = async (req, res) => {
     const user = await User.findOne({
       email: normalizedEmail,
     });
+    console.log("LOGIN EMAIL:", normalizedEmail);
+    console.log("USER FOUND:", !!user);
 
     if (!user) {
       return res.status(401).json({

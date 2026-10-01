@@ -68,6 +68,7 @@ import "./App.css";
 
 import {
   loginUser,
+  registerUser,
   getCurrentUser,
 } from "./services/authService";
 
@@ -345,11 +346,17 @@ function App() {
 
   const [loginError, setLoginError] = useState("");
 
+  const [authMode, setAuthMode] = useState("login");
+
   const [error, setError] = useState("");
+
+  const [name, setName] = useState("");
 
   const [email, setEmail] = useState("");
 
   const [password, setPassword] = useState("");
+
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [showPassword, setShowPassword] =
     useState(false);
@@ -389,17 +396,11 @@ function App() {
   const [selectedMonthKey, setSelectedMonthKey] =
     useState(monthKey(new Date()));
 
-  const [savingsGoal, setSavingsGoal] = useState(() => {
-    const saved = localStorage.getItem("spendvault_savings_goal");
-    return saved ? Number(saved) || 0 : 0;
-  });
+  const [savingsGoal, setSavingsGoal] = useState(0);
 
   const [savingsGoalInput, setSavingsGoalInput] = useState("");
 
-  const [monthlyIncome, setMonthlyIncome] = useState(() => {
-    const saved = localStorage.getItem("spendvault_monthly_income");
-    return saved ? Number(saved) || 0 : 0;
-  });
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
 
   const [monthlyIncomeInput, setMonthlyIncomeInput] = useState("");
 
@@ -437,17 +438,39 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  useEffect(() => {
-    localStorage.setItem("spendvault_savings_goal", String(savingsGoal || 0));
-  }, [savingsGoal]);
+  /* USER-SPECIFIC FINANCIAL SETTINGS
+     Income and savings goal must belong to the logged-in account,
+     not to the browser as one shared global value. */
+  const getUserStorageKey = (key) =>
+    user?._id ? `spendvault_${user._id}_${key}` : null;
 
   useEffect(() => {
-    localStorage.setItem("spendvault_monthly_income", String(monthlyIncome || 0));
-  }, [monthlyIncome]);
+    if (!user?._id) {
+      setMonthlyIncome(0);
+      setSavingsGoal(0);
+      return;
+    }
+
+    const incomeKey = getUserStorageKey("monthly_income");
+    const savingsKey = getUserStorageKey("savings_goal");
+
+    const savedIncome = localStorage.getItem(incomeKey);
+    const savedSavingsGoal = localStorage.getItem(savingsKey);
+
+    setMonthlyIncome(savedIncome ? Number(savedIncome) || 0 : 0);
+    setSavingsGoal(
+      savedSavingsGoal ? Number(savedSavingsGoal) || 0 : 0
+    );
+    setMonthlyIncomeInput("");
+    setSavingsGoalInput("");
+  }, [user?._id]);
 
   const saveMonthlyIncome = () => {
     const value = Number(monthlyIncomeInput);
-    if (!Number.isFinite(value) || value < 0) return;
+    if (!Number.isFinite(value) || value < 0 || !user?._id) return;
+
+    const storageKey = getUserStorageKey("monthly_income");
+    localStorage.setItem(storageKey, String(value));
     setMonthlyIncome(value);
     setMonthlyIncomeInput("");
   };
@@ -465,7 +488,10 @@ function App() {
 
   const saveSavingsGoal = () => {
     const value = Number(savingsGoalInput);
-    if (!Number.isFinite(value) || value < 0) return;
+    if (!Number.isFinite(value) || value < 0 || !user?._id) return;
+
+    const storageKey = getUserStorageKey("savings_goal");
+    localStorage.setItem(storageKey, String(value));
     setSavingsGoal(value);
     setSavingsGoalInput("");
   };
@@ -1417,10 +1443,80 @@ function App() {
 
 
   /* =========================================================
-     LOGIN SCREEN
+     AUTH SCREEN
   ========================================================= */
 
   if (!user) {
+    const isRegister = authMode === "register";
+
+    const switchAuthMode = (mode) => {
+      setAuthMode(mode);
+      setLoginError("");
+      setName("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+      setShowPassword(false);
+    };
+
+    const handleRegister = async (event) => {
+      event.preventDefault();
+      setLoginError("");
+
+      if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+        setLoginError("Please fill in all fields.");
+        return;
+      }
+
+      if (password.length < 6) {
+        setLoginError("Password must be at least 6 characters.");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setLoginError("Passwords do not match.");
+        return;
+      }
+
+      try {
+        setLoginLoading(true);
+
+        const data = await registerUser(
+          name.trim(),
+          email.trim(),
+          password
+        );
+
+        if (!data.token) {
+          throw new Error("Registration token was not returned.");
+        }
+
+        localStorage.setItem("spendvault_token", data.token);
+
+        const userData = await getCurrentUser();
+        setUser(userData.user);
+
+        setName("");
+        setEmail("");
+        setPassword("");
+        setConfirmPassword("");
+      } catch (err) {
+        console.error("Registration failed:", err);
+
+        setLoginError(
+          err.response?.data?.message ||
+            err.message ||
+            "Unable to create your account."
+        );
+      } finally {
+        setLoginLoading(false);
+      }
+    };
+
+    const handleAuthSubmit = isRegister
+      ? handleRegister
+      : handleLogin;
+
     return (
       <div
         style={{
@@ -1436,7 +1532,7 @@ function App() {
         <div
           style={{
             width: "100%",
-            maxWidth: "420px",
+            maxWidth: isRegister ? "460px" : "420px",
           }}
         >
           <div
@@ -1470,8 +1566,7 @@ function App() {
                 color: "#fff",
                 fontSize: "22px",
                 fontWeight: "700",
-                letterSpacing:
-                  "-0.5px",
+                letterSpacing: "-0.5px",
               }}
             >
               SpendVault
@@ -1480,31 +1575,23 @@ function App() {
 
           <div
             style={{
-              background:
-                "rgba(18, 19, 22, 0.95)",
-              border:
-                "1px solid rgba(255,255,255,0.09)",
+              background: "rgba(18, 19, 22, 0.95)",
+              border: "1px solid rgba(255,255,255,0.09)",
               borderRadius: "20px",
               padding: "32px",
-              boxShadow:
-                "0 24px 80px rgba(0,0,0,0.45)",
+              boxShadow: "0 24px 80px rgba(0,0,0,0.45)",
             }}
           >
-            <div
-              style={{
-                marginBottom: "28px",
-              }}
-            >
+            <div style={{ marginBottom: "28px" }}>
               <p
                 style={{
                   color: "#8d96a8",
                   fontSize: "11px",
-                  letterSpacing:
-                    "1.5px",
+                  letterSpacing: "1.5px",
                   marginBottom: "8px",
                 }}
               >
-                SECURE ACCESS
+                {isRegister ? "GET STARTED" : "SECURE ACCESS"}
               </p>
 
               <h1
@@ -1512,11 +1599,10 @@ function App() {
                   color: "#fff",
                   fontSize: "28px",
                   margin: 0,
-                  letterSpacing:
-                    "-0.8px",
+                  letterSpacing: "-0.8px",
                 }}
               >
-                Welcome back
+                {isRegister ? "Create your account" : "Welcome back"}
               </h1>
 
               <p
@@ -1526,24 +1612,21 @@ function App() {
                   marginTop: "9px",
                 }}
               >
-                Sign in to manage
-                your expenses.
+                {isRegister
+                  ? "Start tracking your spending with SpendVault."
+                  : "Sign in to manage your expenses."}
               </p>
             </div>
 
             {loginError && (
               <div
                 style={{
-                  padding:
-                    "12px 14px",
+                  padding: "12px 14px",
                   borderRadius: "10px",
-                  marginBottom:
-                    "18px",
+                  marginBottom: "18px",
                   color: "#ff9b9b",
-                  background:
-                    "rgba(255,70,70,0.08)",
-                  border:
-                    "1px solid rgba(255,70,70,0.18)",
+                  background: "rgba(255,70,70,0.08)",
+                  border: "1px solid rgba(255,70,70,0.18)",
                   fontSize: "13px",
                 }}
               >
@@ -1551,267 +1634,278 @@ function App() {
               </div>
             )}
 
-            <form
-              onSubmit={
-                handleLogin
-              }
-            >
-              <div
-                style={{
-                  marginBottom:
-                    "18px",
-                }}
-              >
+            <form onSubmit={handleAuthSubmit}>
+              {isRegister && (
+                <div style={{ marginBottom: "18px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      color: "#aab1bf",
+                      fontSize: "13px",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    Name
+                  </label>
+
+                  <div style={{ position: "relative" }}>
+                    <CircleDollarSign
+                      size={17}
+                      style={{
+                        position: "absolute",
+                        left: "14px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#697180",
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your name"
+                      autoComplete="name"
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        background: "#0d0f12",
+                        border: "1px solid rgba(255,255,255,0.09)",
+                        borderRadius: "10px",
+                        padding: "13px 14px 13px 42px",
+                        color: "#fff",
+                        outline: "none",
+                        fontSize: "14px",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginBottom: "18px" }}>
                 <label
                   style={{
-                    display:
-                      "block",
-                    color:
-                      "#aab1bf",
-                    fontSize:
-                      "13px",
-                    marginBottom:
-                      "8px",
+                    display: "block",
+                    color: "#aab1bf",
+                    fontSize: "13px",
+                    marginBottom: "8px",
                   }}
                 >
                   Email
                 </label>
 
-                <div
-                  style={{
-                    position:
-                      "relative",
-                  }}
-                >
+                <div style={{ position: "relative" }}>
                   <Mail
                     size={17}
                     style={{
-                      position:
-                        "absolute",
+                      position: "absolute",
                       left: "14px",
                       top: "50%",
-                      transform:
-                        "translateY(-50%)",
-                      color:
-                        "#697180",
+                      transform: "translateY(-50%)",
+                      color: "#697180",
                     }}
                   />
-
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) =>
-                      setEmail(
-                        e.target
-                          .value
-                      )
-                    }
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     autoComplete="email"
                     style={{
-                      width:
-                        "100%",
-                      boxSizing:
-                        "border-box",
-                      background:
-                        "#0d0f12",
-                      border:
-                        "1px solid rgba(255,255,255,0.09)",
-                      borderRadius:
-                        "10px",
-                      padding:
-                        "13px 14px 13px 42px",
-                      color:
-                        "#fff",
-                      outline:
-                        "none",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      boxSizing: "border-box",
+                      background: "#0d0f12",
+                      border: "1px solid rgba(255,255,255,0.09)",
+                      borderRadius: "10px",
+                      padding: "13px 14px 13px 42px",
+                      color: "#fff",
+                      outline: "none",
+                      fontSize: "14px",
                     }}
                   />
                 </div>
               </div>
 
-              <div
-                style={{
-                  marginBottom:
-                    "24px",
-                }}
-              >
+              <div style={{ marginBottom: "18px" }}>
                 <label
                   style={{
-                    display:
-                      "block",
-                    color:
-                      "#aab1bf",
-                    fontSize:
-                      "13px",
-                    marginBottom:
-                      "8px",
+                    display: "block",
+                    color: "#aab1bf",
+                    fontSize: "13px",
+                    marginBottom: "8px",
                   }}
                 >
                   Password
                 </label>
 
-                <div
-                  style={{
-                    position:
-                      "relative",
-                  }}
-                >
+                <div style={{ position: "relative" }}>
                   <Lock
                     size={17}
                     style={{
-                      position:
-                        "absolute",
+                      position: "absolute",
                       left: "14px",
                       top: "50%",
-                      transform:
-                        "translateY(-50%)",
-                      color:
-                        "#697180",
+                      transform: "translateY(-50%)",
+                      color: "#697180",
                     }}
                   />
 
                   <input
-                    type={
-                      showPassword
-                        ? "text"
-                        : "password"
-                    }
-                    value={
-                      password
-                    }
-                    onChange={(e) =>
-                      setPassword(
-                        e.target
-                          .value
-                      )
-                    }
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={isRegister ? "At least 6 characters" : "Enter your password"}
+                    autoComplete={isRegister ? "new-password" : "current-password"}
                     style={{
-                      width:
-                        "100%",
-                      boxSizing:
-                        "border-box",
-                      background:
-                        "#0d0f12",
-                      border:
-                        "1px solid rgba(255,255,255,0.09)",
-                      borderRadius:
-                        "10px",
-                      padding:
-                        "13px 45px 13px 42px",
-                      color:
-                        "#fff",
-                      outline:
-                        "none",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      boxSizing: "border-box",
+                      background: "#0d0f12",
+                      border: "1px solid rgba(255,255,255,0.09)",
+                      borderRadius: "10px",
+                      padding: "13px 45px 13px 42px",
+                      color: "#fff",
+                      outline: "none",
+                      fontSize: "14px",
                     }}
                   />
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowPassword(
-                        !showPassword
-                      )
-                    }
+                    onClick={() => setShowPassword(!showPassword)}
                     style={{
-                      position:
-                        "absolute",
+                      position: "absolute",
                       right: "12px",
                       top: "50%",
-                      transform:
-                        "translateY(-50%)",
+                      transform: "translateY(-50%)",
                       border: "none",
-                      background:
-                        "transparent",
-                      color:
-                        "#697180",
-                      cursor:
-                        "pointer",
-                      padding:
-                        "4px",
+                      background: "transparent",
+                      color: "#697180",
+                      cursor: "pointer",
+                      padding: "4px",
                     }}
                   >
-                    {showPassword ? (
-                      <EyeOff
-                        size={17}
-                      />
-                    ) : (
-                      <Eye
-                        size={17}
-                      />
-                    )}
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
               </div>
 
+              {isRegister && (
+                <div style={{ marginBottom: "24px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      color: "#aab1bf",
+                      fontSize: "13px",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    Confirm password
+                  </label>
+
+                  <div style={{ position: "relative" }}>
+                    <Lock
+                      size={17}
+                      style={{
+                        position: "absolute",
+                        left: "14px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#697180",
+                      }}
+                    />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter your password"
+                      autoComplete="new-password"
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        background: "#0d0f12",
+                        border: "1px solid rgba(255,255,255,0.09)",
+                        borderRadius: "10px",
+                        padding: "13px 14px 13px 42px",
+                        color: "#fff",
+                        outline: "none",
+                        fontSize: "14px",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {!isRegister && <div style={{ marginBottom: "24px" }} />}
+
               <button
                 type="submit"
-                disabled={
-                  loginLoading
-                }
+                disabled={loginLoading}
                 style={{
-                  width:
-                    "100%",
-                  border:
-                    "none",
-                  borderRadius:
-                    "10px",
-                  padding:
-                    "13px",
-                  background:
-                    "#f4f4f4",
-                  color:
-                    "#111",
-                  fontWeight:
-                    "700",
-                  fontSize:
-                    "14px",
-                  cursor:
-                    loginLoading
-                      ? "not-allowed"
-                      : "pointer",
-                  opacity:
-                    loginLoading
-                      ? 0.65
-                      : 1,
+                  width: "100%",
+                  border: "none",
+                  borderRadius: "10px",
+                  padding: "13px",
+                  background: "#f4f4f4",
+                  color: "#111",
+                  fontWeight: "700",
+                  fontSize: "14px",
+                  cursor: loginLoading ? "not-allowed" : "pointer",
+                  opacity: loginLoading ? 0.65 : 1,
                 }}
               >
                 {loginLoading
-                  ? "Signing in..."
-                  : "Sign in"}
+                  ? isRegister
+                    ? "Creating account..."
+                    : "Signing in..."
+                  : isRegister
+                    ? "Create account"
+                    : "Sign in"}
               </button>
             </form>
 
-            <p
+            <div
               style={{
-                textAlign:
-                  "center",
-                color:
-                  "#555d6c",
-                fontSize:
-                  "12px",
-                marginTop:
-                  "24px",
-                marginBottom:
-                  0,
+                textAlign: "center",
+                marginTop: "22px",
+                paddingTop: "20px",
+                borderTop: "1px solid rgba(255,255,255,0.07)",
               }}
             >
-              Your session is
-              secured with JWT
-              authentication.
+              <span style={{ color: "#697180", fontSize: "13px" }}>
+                {isRegister ? "Already have an account?" : "Don't have an account?"}
+              </span>{" "}
+              <button
+                type="button"
+                onClick={() => switchAuthMode(isRegister ? "login" : "register")}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: "#f4f4f4",
+                  fontSize: "13px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                {isRegister ? "Sign in" : "Create account"}
+              </button>
+            </div>
+
+            <p
+              style={{
+                textAlign: "center",
+                color: "#555d6c",
+                fontSize: "12px",
+                marginTop: "18px",
+                marginBottom: 0,
+              }}
+            >
+              Your session is secured with JWT authentication.
             </p>
           </div>
         </div>
       </div>
     );
   }
-
 
   /* =========================================================
      DASHBOARD
